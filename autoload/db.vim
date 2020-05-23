@@ -171,6 +171,50 @@ function! db#unlet() abort
   unlet! s:db
 endfunction
 
+function! s:select_all(line)
+  let file = tempname()
+  let infile = file . '.' . db#adapter#call(s:conn, 'input_extension', [], 'sql')
+  let outfile = file . '.' . db#adapter#call(s:conn, 'output_extension', [], 'dbout')
+  call writefile(["select * from " . a:line], infile)
+  call s:filter_write(s:conn, infile, outfile)
+  execute 'autocmd BufReadPost' fnameescape(tr(outfile, '\', '/'))
+        \ 'let b:db_input =' string(infile)
+        \ '| let b:db =' string(s:conn)
+        \ '| let w:db = b:db'
+        \ '| call s:init()'
+  silent execute 'botright pedit' outfile
+endfunction
+
+function! db#execute_command_with_fzf(mods, bang, line1, line2, cmd) abort
+  let [url, cmd] = s:cmd_split(a:cmd)
+  try
+    let s:conn = db#connect(url)
+    if empty(s:conn)
+      return 'echoerr "DB: no URL given and no default connection"'
+    endif
+    let list_table_cmd = db#adapter#dispatch(s:conn, 'interactive'). " -e " . "\"". cmd . "\""
+    let results = system(list_table_cmd)
+    let lines = []
+    for line in split(results, "\n")
+      call add(lines, line)
+    endfor
+    call fzf#run(fzf#wrap({
+          \ 'source': lines,
+          \ 'sink': function('s:select_all'),
+          \ }))
+
+  catch /^DB exec error: /
+    redraw
+    echohl ErrorMsg
+    echo v:exception[15:-1]
+    echohl NONE
+  catch /^DB: /
+    redraw
+    return 'echoerr '.string(v:exception)
+  endtry
+  return ''
+endfunction
+
 function! db#execute_command(mods, bang, line1, line2, cmd) abort
   let mods = a:mods ==# '<mods>' ? '' : a:mods
   if type(a:cmd) == type(0)

@@ -30,6 +30,10 @@ command! -bang -nargs=? -range=-1 -complete=custom,db#command_complete DB
       \ exe db#execute_command('<mods>', <bang>0, <line1>, <count>, substitute(<q-args>,
       \ '^[al]:\w\+\>\ze\s*\%($\|[^[:space:]=]\)', '\=eval(submatch(0))', ''))
 
+command! -bang -nargs=? -range=-1 -complete=custom,db#command_complete DBL
+      \ exe db#execute_command_with_fzf('<mods>', <bang>0, <line1>, <count>, substitute(<q-args>,
+      \ '^[al]:\w\+\>\ze\s*\%($\|[^[:space:]=]\)', '\=eval(submatch(0))', ''))
+
 function! s:manage_dbext() abort
   return get(b:, 'dadbod_manage_dbext', get(g:, 'dadbod_manage_dbext'))
 endfunction
