@@ -187,6 +187,11 @@ endfunction
 
 function! db#execute_command_with_fzf(mods, bang, line1, line2, cmd) abort
   let [url, cmd] = s:cmd_split(a:cmd)
+
+  if get(g:, 'cur', 'defaultval') == 'defaultval'
+    let g:cur = substitute(g:databases[0][1], 'DB g:cur = ', '', '')
+  endif
+
   try
     let s:conn = db#connect(url)
     if empty(s:conn)
