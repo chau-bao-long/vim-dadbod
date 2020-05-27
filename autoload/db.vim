@@ -183,21 +183,43 @@ function! s:select_all(line)
         \ '| let w:db = b:db'
         \ '| call s:init()'
   silent execute 'botright pedit' outfile
+  wincmd j
 endfunction
 
-function! db#execute_command_with_fzf(mods, bang, line1, line2, cmd) abort
-  let [url, cmd] = s:cmd_split(a:cmd)
+function! s:describe_tables(line)
+  let file = tempname()
+  let infile = file . '.' . db#adapter#call(s:conn, 'input_extension', [], 'sql')
+  let outfile = file . '.' . db#adapter#call(s:conn, 'output_extension', [], 'dbout')
+  call writefile(["describe " . a:line], infile)
+  call s:filter_write(s:conn, infile, outfile)
+  execute 'autocmd BufReadPost' fnameescape(tr(outfile, '\', '/'))
+        \ 'let b:db_input =' string(infile)
+        \ '| let b:db =' string(s:conn)
+        \ '| let w:db = b:db'
+        \ '| call s:init()'
+  silent execute 'botright pedit' outfile
+  wincmd j
+endfunction
 
+function! db#select_table_with_fzf(mods, bang, line1, line2)
+  call db#execute_command_with_fzf('g:cur', 'show tables', function('s:select_all'))
+endfunction
+
+function! db#describe_tables_with_fzf(mods, bang, line1, line2)
+  call db#execute_command_with_fzf('g:cur', 'show tables', function('s:describe_tables'))
+endfunction
+
+function! db#execute_command_with_fzf(url, cmd, handler) abort
   if get(g:, 'cur', 'defaultval') == 'defaultval'
     let g:cur = substitute(g:databases[0][1], 'DB g:cur = ', '', '')
   endif
 
   try
-    let s:conn = db#connect(url)
+    let s:conn = db#connect(a:url)
     if empty(s:conn)
       return 'echoerr "DB: no URL given and no default connection"'
     endif
-    let list_table_cmd = db#adapter#dispatch(s:conn, 'interactive'). " -e " . "\"". cmd . "\""
+    let list_table_cmd = db#adapter#dispatch(s:conn, 'interactive'). " -e " . "\"". a:cmd . "\""
     let results = system(list_table_cmd)
     let lines = []
     for line in split(results, "\n")
@@ -205,7 +227,7 @@ function! db#execute_command_with_fzf(mods, bang, line1, line2, cmd) abort
     endfor
     call fzf#run(fzf#wrap({
           \ 'source': lines,
-          \ 'sink': function('s:select_all'),
+          \ 'sink': a:handler,
           \ }))
 
   catch /^DB exec error: /
