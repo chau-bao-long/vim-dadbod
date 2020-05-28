@@ -51,3 +51,7 @@ function! db#adapter#postgresql#tables(url) abort
   return s:parse_columns(system(
         \ db#adapter#postgresql#filter(a:url) . ' --no-psqlrc -tA -c "\dtvm"'), 1)
 endfunction
+
+function! db#adapter#postgresql#describe_table(line) abort
+  return "\\\d  " . a:line
+endfunction

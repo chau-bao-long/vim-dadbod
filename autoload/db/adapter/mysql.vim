@@ -50,3 +50,7 @@ endfunction
 function! db#adapter#mysql#tables(url) abort
   return split(system(s:command_for_url(a:url). ' -e "show tables"'), "\n")
 endfunction
+
+function! db#adapter#mysql#describe_table(line) abort
+  return "describe " . a:line
+endfunction

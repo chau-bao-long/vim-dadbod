@@ -190,7 +190,8 @@ function! s:describe_tables(line)
   let file = tempname()
   let infile = file . '.' . db#adapter#call(s:conn, 'input_extension', [], 'sql')
   let outfile = file . '.' . db#adapter#call(s:conn, 'output_extension', [], 'dbout')
-  call writefile(["describe " . a:line], infile)
+  let describe_cmd = db#adapter#call(s:conn, 'describe_table', [a:line])
+  call writefile([describe_cmd], infile)
   call s:filter_write(s:conn, infile, outfile)
   execute 'autocmd BufReadPost' fnameescape(tr(outfile, '\', '/'))
         \ 'let b:db_input =' string(infile)
@@ -202,31 +203,27 @@ function! s:describe_tables(line)
 endfunction
 
 function! db#select_table_with_fzf(mods, bang, line1, line2)
-  call db#execute_command_with_fzf('g:cur', 'show tables', function('s:select_all'))
+  call db#execute_command_with_fzf('g:cur', function('s:select_all'))
 endfunction
 
 function! db#describe_tables_with_fzf(mods, bang, line1, line2)
-  call db#execute_command_with_fzf('g:cur', 'show tables', function('s:describe_tables'))
+  call db#execute_command_with_fzf('g:cur', function('s:describe_tables'))
 endfunction
 
-function! db#execute_command_with_fzf(url, cmd, handler) abort
+function! db#execute_command_with_fzf(url, handler) abort
   if get(g:, 'cur', 'defaultval') == 'defaultval'
     let g:cur = substitute(g:databases[0][1], 'DB g:cur = ', '', '')
   endif
 
   try
     let s:conn = db#connect(a:url)
+
     if empty(s:conn)
       return 'echoerr "DB: no URL given and no default connection"'
     endif
-    let list_table_cmd = db#adapter#dispatch(s:conn, 'interactive'). " -e " . "\"". a:cmd . "\""
-    let results = system(list_table_cmd)
-    let lines = []
-    for line in split(results, "\n")
-      call add(lines, line)
-    endfor
+
     call fzf#run(fzf#wrap({
-          \ 'source': lines,
+          \ 'source': db#adapter#dispatch(s:conn, 'tables'),
           \ 'sink': a:handler,
           \ }))
 
