@@ -225,6 +225,7 @@ function! db#execute_command_with_fzf(url, handler) abort
     call fzf#run(fzf#wrap({
           \ 'source': db#adapter#dispatch(s:conn, 'tables'),
           \ 'sink': a:handler,
+          \ 'options': '+m -x --ansi --tiebreak=index --tiebreak=begin --prompt "Table> "',
           \ }))
 
   catch /^DB exec error: /
